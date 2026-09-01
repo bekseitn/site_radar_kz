@@ -97,7 +97,7 @@ class TechnologyDetector
     @delay = delay
     @limit = limit
     @base_scope = scope
-    @ai_enabled = ai_enabled
+    @ai_enabled = !!ai_enabled # ai_checked is NOT NULL — never let this end up nil
     @on_progress = on_progress
   end
 

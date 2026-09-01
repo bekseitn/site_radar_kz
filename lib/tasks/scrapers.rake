@@ -20,7 +20,9 @@ namespace :scrapers do
   desc "Detect technology on sites with status 'pending' (rails scrapers:detect_technologies[100] to only check 100 this run, rails scrapers:detect_technologies[,true] to also use a local Ollama model — see Ai::Client — for description/category/vacancy-link fallbacks)"
   task :detect_technologies, [ :limit, :ai ] => :environment do |_, args|
     limit = args[:limit].presence&.to_i
-    ai_enabled = ActiveModel::Type::Boolean.new.cast(args[:ai])
+    # .cast(nil) is nil, not false — the arg is optional, so that's the
+    # common case when :ai is left out entirely.
+    ai_enabled = ActiveModel::Type::Boolean.new.cast(args[:ai]) || false
     TechnologyDetector.call(limit: limit, ai_enabled: ai_enabled, on_progress: progress_bar("detect"))
   end
 
