@@ -15,7 +15,12 @@ class Site < ApplicationRecord
 
   before_validation :normalize_url
 
-  validates :url, presence: true, uniqueness: true
+  # http(s)-only, so a link_to using these can never render a javascript:
+  # or data: URL from scraped content.
+  URL_FORMAT = %r{\Ahttps?://\S+\z}i
+
+  validates :url, presence: true, uniqueness: true, format: URL_FORMAT
+  validates :vacancy_url, format: URL_FORMAT, allow_blank: true
 
   # Allowlist for Ransack — only columns the site list actually sorts by.
   def self.ransackable_attributes(_auth_object = nil)
