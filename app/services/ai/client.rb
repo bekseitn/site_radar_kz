@@ -48,7 +48,7 @@ module Ai
       return nil if content.blank?
 
       JSON.parse(content, symbolize_names: true)
-    rescue Faraday::Error, JSON::ParserError => e
+    rescue *network_rescue_classes(Faraday::Error), JSON::ParserError => e
       Rails.logger.warn("[Ai::Client] #{e.class}: #{e.message}")
       nil
     end
@@ -57,11 +57,18 @@ module Ai
     # run instead of discovering Ollama is down on every site's first call.
     def available?
       connection.get("/api/tags").success?
-    rescue Faraday::Error
+    rescue *network_rescue_classes(Faraday::Error)
       false
     end
 
     private
+
+    # Also treats WebMock/VCR's "unstubbed request" errors as network
+    # errors, so an unstubbed Ollama call fails gracefully in specs.
+    def network_rescue_classes(base)
+      [ base, defined?(WebMock::NetConnectNotAllowedError) && WebMock::NetConnectNotAllowedError,
+        defined?(VCR::Errors::UnhandledHTTPRequestError) && VCR::Errors::UnhandledHTTPRequestError ].select { |k| k }
+    end
 
     def connection
       @connection ||= Faraday.new(HOST) do |f|

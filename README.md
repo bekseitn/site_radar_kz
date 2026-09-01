@@ -99,6 +99,15 @@ bin/detect_with_ollama         # every pending site
 bin/detect_with_ollama 1000    # only the first 1000
 ```
 
+AI is the slow part. On a big batch it's often faster to check every
+site first without it, then go back and add AI enrichment only to the
+sites that still need it:
+
+```bash
+bin/rails scrapers:detect_technologies   # fast pass, no AI
+bin/rails scrapers:enrich_with_ai        # slow pass, AI only, skips ai_checked sites
+```
+
 Once enough sites have descriptions, build a shared category taxonomy
 from the actual dataset and (re)classify every site into it:
 

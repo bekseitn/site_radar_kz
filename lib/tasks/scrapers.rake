@@ -18,6 +18,13 @@ namespace :scrapers do
     TechnologyDetector.call(limit: limit, ai_enabled: ai_enabled, on_progress: progress_bar("detect"))
   end
 
+  desc "Re-run already-checked sites through the AI fallbacks only (rails scrapers:enrich_with_ai[100] to only check 100 this run) — for after a plain scrapers:detect_technologies run, to add AI enrichment without re-checking everything"
+  task :enrich_with_ai, [ :limit ] => :environment do |_, args|
+    limit = args[:limit].presence&.to_i
+    scope = Site.checked.where(ai_checked: false)
+    TechnologyDetector.call(limit: limit, ai_enabled: true, scope: scope, on_progress: progress_bar("enrich"))
+  end
+
   desc "Phase 1: sample site descriptions and build a shared category taxonomy (Category rows) with a local Ollama model"
   task build_category_taxonomy: :environment do
     categories = Ai::CategoryTaxonomyBuilder.call(on_progress: progress_bar("taxonomy"))

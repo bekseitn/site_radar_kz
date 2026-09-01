@@ -86,8 +86,8 @@ class TechnologyDetector
   # processed site's status moves off "pending", so the next run picks
   # up wherever this one left off.
   #
-  # scope defaults to Site.pending, but can be narrowed for a one-off
-  # re-run against a subset (must still only contain pending sites).
+  # scope defaults to Site.pending, but can be swapped for a re-check of
+  # already-checked sites (e.g. scrapers:enrich_with_ai).
   #
   # ai_enabled turns on the local-Ollama fallbacks described above.
   # Stops the run if Ollama isn't reachable — see OllamaUnavailableError.
