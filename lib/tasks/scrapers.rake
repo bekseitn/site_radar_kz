@@ -3,10 +3,13 @@ require "ruby-progressbar"
 # Builds an on_progress callback backed by a visible progress bar. Pass
 # just a count if the total isn't known upfront, or pass total once it
 # is. A 3rd label arg (e.g. the site currently being processed) shows
-# up next to the title.
+# up next to the title. A 4th error arg gets printed as its own line
+# (bar.log clears the bar, prints, then redraws it) instead of getting
+# lost in the log file.
 def progress_bar(title)
   bar = ProgressBar.create(title: title, total: nil, format: "%t: |%B| %c/%C %p%% ETA: %e")
-  ->(done, total = nil, label = nil) do
+  ->(done, total = nil, label = nil, error = nil) do
+    bar.log("ERROR #{error}") if error
     bar.total = total if total
     bar.title = label ? "#{title} #{label}" : title
     bar.progress = done

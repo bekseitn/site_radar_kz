@@ -81,7 +81,8 @@ class TechnologyDetector
 
   # on_progress is called twice per site: once as it starts, as
   # on_progress.call(done_count, total_count, site_url), and again once
-  # it's done, as on_progress.call(done_count, total_count).
+  # it's done, as on_progress.call(done_count, total_count, nil, error) —
+  # error is the site's url + exception, or nil if it processed cleanly.
   #
   # limit caps how many sites this run processes (nil means all). Every
   # processed site's status moves off "pending", so the next run picks
@@ -124,14 +125,16 @@ class TechnologyDetector
 
       @on_progress.call(index, total, site.url)
 
+      error = nil
       begin
         process(site, stats)
       rescue StandardError => e
         stats[:errors] += 1
-        Rails.logger.error("[TechnologyDetector] #{site.url} raised #{e.class}: #{e.message}")
+        error = "#{site.url} raised #{e.class}: #{e.message}"
+        Rails.logger.error("[TechnologyDetector] #{error}")
       end
 
-      @on_progress.call(index + 1, total)
+      @on_progress.call(index + 1, total, nil, error)
     end
 
     log_summary(stats)
