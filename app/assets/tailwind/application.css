@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* Pagy's series_nav (app/views/sites/_list.html.erb) renders plain,
+   unstyled <a> tags — it doesn't take a per-link classes: option in its
+   page-number loop, so there's no way to hand it Tailwind utility
+   classes directly. Styled here instead, scoped to Pagy's own
+   "pagy series-nav" wrapper class so it can't leak onto anything else. */
+.pagy.series-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.pagy.series-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #6b7280; /* gray-500 */
+}
+
+.pagy.series-nav a:hover:not([aria-disabled]) {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #111827; /* gray-900 */
+}
+
+/* The current page (a plain, non-navigating <a> — see page_label/series
+   in the pagy gem) and the disabled prev/next at the ends of the range. */
+.pagy.series-nav a[aria-current="page"] {
+  background-color: #4f46e5; /* indigo-600 */
+  color: #fff;
+  font-weight: 600;
+}
+
+.pagy.series-nav a[role="separator"] {
+  color: #d1d5db; /* gray-300 */
+  cursor: default;
+}
+
+.pagy.series-nav a[aria-disabled="true"]:not([aria-current="page"]):not([role="separator"]) {
+  color: #d1d5db; /* gray-300 */
+  pointer-events: none;
+}

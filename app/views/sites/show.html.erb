@@ -1,0 +1,134 @@
+<%= turbo_frame_tag "site_modal_frame" do %>
+  <div class="p-5 max-w-full">
+    <div class="flex items-start justify-between gap-4 mb-4">
+      <div class="flex items-center gap-2 min-w-0">
+        <% icon = @site.favicon_url || @site.logo_url %>
+        <% if icon %>
+          <img src="<%= icon %>" alt="" class="h-6 w-6 flex-none" loading="lazy" onerror="this.style.display='none'">
+        <% end %>
+        <h2 class="text-lg font-semibold text-gray-900 truncate"><%= localized_site_name(@site).presence || @site.url %></h2>
+      </div>
+      <button type="button" data-action="click->modal#close" aria-label="<%= t('sites.show.close') %>"
+              class="flex-none text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-4">
+      <%= link_to @site.url, @site.url, target: "_blank", rel: "noopener", class: "text-indigo-600" %>
+    </p>
+
+    <% description = localized_site_description(@site) %>
+    <% if description.present? %>
+      <p class="text-sm text-gray-700 mb-4"><%= description %></p>
+    <% end %>
+
+    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm mb-4">
+      <% site_cities = @site.cities.map(&:name) %>
+      <% if @site.country.present? || site_cities.any? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.location") %></dt>
+          <dd><%= [ site_cities.join(", "), @site.country ].select(&:present?).join(", ") %></dd>
+        </div>
+      <% end %>
+      <% if @site.categories.any? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.category") %></dt>
+          <dd><%= @site.categories.map(&:name).join(", ") %></dd>
+        </div>
+      <% end %>
+      <% if @site.rating.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.rating") %></dt>
+          <dd>★ <%= number_with_precision(@site.rating, precision: 1) %><% if @site.review_count.present? %> (<%= t("sites.show.reviews", count: @site.review_count) %>)<% end %></dd>
+        </div>
+      <% end %>
+      <% if @site.opening_hours.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.opening_hours") %></dt>
+          <dd><%= @site.opening_hours %></dd>
+        </div>
+      <% end %>
+      <% if @site.phone.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.phone") %></dt>
+          <dd><%= link_to @site.phone, "tel:#{@site.phone}", class: "text-indigo-600" %></dd>
+        </div>
+      <% end %>
+      <% if @site.email.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.email") %></dt>
+          <dd><%= link_to @site.email, "mailto:#{@site.email}", class: "text-indigo-600" %></dd>
+        </div>
+      <% end %>
+      <% language_codes = real_language_codes(@site.primary_language&.name, @site.languages.map(&:name)) %>
+      <% if language_codes.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.language") %></dt>
+          <dd class="flex flex-wrap gap-1 text-base">
+            <% language_codes.each do |code| %>
+              <span title="<%= language_display_name(code) %>"><%= language_flag(code) %></span>
+            <% end %>
+          </dd>
+        </div>
+      <% end %>
+      <% if @site.latitude.present? && @site.longitude.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.map") %></dt>
+          <dd>
+            <%= link_to t("sites.show.view_on_maps"), "https://www.google.com/maps/search/?api=1&query=#{@site.latitude},#{@site.longitude}",
+                  target: "_blank", rel: "noopener", class: "text-indigo-600" %>
+          </dd>
+        </div>
+      <% end %>
+      <% if @site.vacancy_url.present? %>
+        <div>
+          <dt class="text-gray-500"><%= t("sites.show.vacancies") %></dt>
+          <dd><%= link_to t("sites.show.careers_page"), @site.vacancy_url, target: "_blank", rel: "noopener", class: "text-indigo-600" %></dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <% if @site.social_links.present? %>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <% @site.social_links.each do |platform, href| %>
+          <a href="<%= href %>" target="_blank" rel="noopener" title="<%= social_link_label(platform) %>"
+             class="flex items-center justify-center h-7 w-7 rounded bg-gray-100 hover:bg-gray-200">
+            <img src="<%= social_link_icon_url(platform) %>" alt="<%= social_link_label(platform) %>" class="h-4 w-4">
+          </a>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @site.noindex? || @site.likely_parked? %>
+      <div class="flex flex-wrap gap-1 mb-4">
+        <% if @site.noindex? %>
+          <span title="<%= t('sites.show.noindex_title') %>"
+                class="text-xs rounded bg-amber-100 px-1.5 py-0.5 text-amber-800"><%= t("sites.show.noindex_badge") %></span>
+        <% end %>
+        <% if @site.likely_parked? %>
+          <span title="<%= t('sites.show.parked_title') %>"
+                class="text-xs rounded bg-red-100 px-1.5 py-0.5 text-red-800"><%= t("sites.show.parked_badge") %></span>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if @site.technologies.any? %>
+      <div>
+        <h3 class="text-sm font-medium text-gray-700 mb-2"><%= t("sites.show.technologies") %></h3>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <% @site.technologies.each do |technology| %>
+            <span class="inline-flex items-center gap-1 whitespace-nowrap text-sm">
+              <% if technology.icon_url %>
+                <img src="<%= technology.icon_url %>" alt="" class="h-4 w-4" loading="lazy" onerror="this.style.display='none'">
+              <% end %>
+              <%= technology.name %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <p class="text-xs text-gray-400 mt-4 pt-4 border-t border-gray-100">
+      <%= t("sites.show.source") %>: <%= @site.source %> · <%= t("sites.show.last_checked") %>: <%= @site.last_checked_at&.to_date || t("sites.show.never") %>
+    </p>
+  </div>
+<% end %>

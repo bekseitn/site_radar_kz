@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Runs the AI-enabled detector, keeping Ollama alive. If Ollama dies
+# mid-run, TechnologyDetector raises and the rake task exits non-zero —
+# this restarts Ollama and reruns the same task, which just picks up
+# wherever it left off (unprocessed sites stay "pending").
+#
+# Usage: bin/detect_with_ollama [limit]
+set -uo pipefail
+
+export PATH="$HOME/.local/ollama/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/.local/ollama/lib/ollama:${LD_LIBRARY_PATH:-}"
+export OLLAMA_MODELS="$HOME/.local/ollama/models"
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIMIT="${1:-}"
+RAKE_TASK="scrapers:detect_technologies[${LIMIT},true]"
+LOG_FILE="$PROJECT_DIR/detect.log"
+MAX_RETRIES=20
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+ollama_alive() {
+  curl -sf "http://127.0.0.1:11434/api/tags" -o /dev/null --max-time 5
+}
+
+start_ollama() {
+  ollama_alive && return 0
+
+  log "Ollama is down, starting it..."
+  nohup ollama serve > "$HOME/.local/ollama/serve.log" 2>&1 &
+  disown
+
+  for _ in $(seq 1 30); do
+    ollama_alive && { log "Ollama is up."; return 0; }
+    sleep 1
+  done
+
+  log "Ollama didn't come up in time."
+  return 1
+}
+
+cd "$PROJECT_DIR" || exit 1
+
+for attempt in $(seq 1 "$MAX_RETRIES"); do
+  start_ollama || { sleep 5; continue; }
+
+  log "Running rake $RAKE_TASK (attempt $attempt)..."
+  mise x ruby@4.0.6 -- bin/rails "$RAKE_TASK" >> "$LOG_FILE" 2>&1
+  status=$?
+
+  if [ "$status" -eq 0 ]; then
+    log "Detector finished cleanly. Done."
+    exit 0
+  fi
+
+  log "Detector exited with status $status — retrying in 5s..."
+  sleep 5
+done
+
+log "Gave up after $MAX_RETRIES attempts."
+exit 1

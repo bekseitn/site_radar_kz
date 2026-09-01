@@ -1,0 +1,63 @@
+<% if sites.any? %>
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <span class="text-sm text-gray-500"><%== pagy.info_tag %></span>
+    <div class="overflow-x-auto"><%== pagy.series_nav %></div>
+  </div>
+
+  <div class="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+  <table class="w-full text-left text-sm">
+    <thead>
+      <tr class="border-b border-gray-200 text-gray-500">
+        <th class="py-2 px-3"><%= sort_link(sort_search, :url, t("sites.table.url"), data: { turbo_frame: "sites" }) %></th>
+        <th class="py-2 px-3"><%= sort_link(sort_search, :name, t("sites.table.name"), data: { turbo_frame: "sites" }) %></th>
+        <th class="py-2 px-3"><%= t("sites.table.category") %></th>
+        <th class="py-2 px-3"><%= t("sites.table.technologies") %></th>
+        <th class="py-2 px-3"><%= t("sites.table.vacancies") %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <%# The whole row opens the site's detail modal, except links/buttons inside it. %>
+      <% sites.each do |site| %>
+        <tr class="border-b border-gray-100 cursor-pointer hover:bg-gray-50"
+            data-action="click->modal#open" data-modal-url-value="<%= site_path(site) %>">
+          <td class="py-2 px-3"><%= link_to site.url, site.url, target: "_blank", rel: "noopener", class: "text-indigo-600" %></td>
+          <td class="py-2 px-3">
+            <div class="flex items-center gap-2">
+              <% icon = site.favicon_url || site.logo_url %>
+              <% if icon %>
+                <img src="<%= icon %>" alt="" class="h-4 w-4 flex-none" loading="lazy" onerror="this.style.display='none'">
+              <% end %>
+              <span title="<%= localized_site_description(site) %>"><%= localized_site_name(site) %></span>
+            </div>
+          </td>
+          <td class="py-2 px-3"><%= site.categories.map(&:name).join(", ") %></td>
+          <td class="py-2 px-3">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <% site.technologies.each do |technology| %>
+                <span class="inline-flex items-center gap-1 whitespace-nowrap">
+                  <% if technology.icon_url %>
+                    <img src="<%= technology.icon_url %>" alt="" class="h-4 w-4" loading="lazy" onerror="this.style.display='none'">
+                  <% end %>
+                  <%= technology.name %>
+                </span>
+              <% end %>
+            </div>
+          </td>
+          <td class="py-2 px-3">
+            <% if site.vacancy_url.present? %>
+              <%= link_to t("sites.table.hiring"), site.vacancy_url, target: "_blank", rel: "noopener",
+                    class: "text-xs rounded bg-green-100 px-1.5 py-0.5 text-green-800 hover:bg-green-200 w-fit" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="mt-4 overflow-x-auto">
+    <%== pagy.series_nav %>
+  </div>
+<% else %>
+  <p class="text-gray-500"><%= t("sites.table.empty") %></p>
+<% end %>

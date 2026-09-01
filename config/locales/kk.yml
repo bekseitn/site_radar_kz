@@ -1,0 +1,105 @@
+kk:
+  layout:
+    default_title: "Сайттар және олардың технологиялары"
+    default_description: "Қазақстандық сайттар мен олар құрылған технологиялардың (CMS, фреймворктер, аналитика және т. б.) каталогы."
+    heading: "SiteRadar KZ — сайттар және олардың технологиялары"
+    nav:
+      sites: "Сайттар"
+      stats: "Статистика"
+  sites:
+    filters:
+      city: "Қала"
+      all_cities: "Барлық қалалар"
+      category: "Санат"
+      all_categories: "Барлық санаттар"
+      technology: "Технология"
+      technology_placeholder: "мысалы, WordPress"
+      pick_from_list: "Тізімнен таңдау"
+      language: "Тіл"
+      all_languages: "Барлық тілдер"
+      name_or_domain: "Атауы немесе домен"
+      name_or_domain_placeholder: "мысалы, kaspi.kz"
+      vacancy: "Бос орындар"
+      all_sites: "Барлық сайттар"
+      hiring_only: "Тек бос орны барлар"
+      submit: "Сүзгі"
+    table:
+      url: "URL"
+      name: "Атауы"
+      category: "Санаттар"
+      technologies: "Технологиялар"
+      vacancies: "Бос орындар"
+      empty: "Таңдалған сүзгілерге сәйкес сайттар табылмады."
+      hiring: "Жұмысқа алу"
+    meta:
+      filtered_description: "«%{label}» бойынша қазақстандық сайттар және олар қолданатын технологиялар."
+    show:
+      close: "Жабу"
+      location: "Орналасқан жері"
+      category: "Санаттар"
+      rating: "Рейтинг"
+      reviews:
+        one: "%{count} пікір"
+        other: "%{count} пікір"
+      opening_hours: "Жұмыс уақыты"
+      phone: "Телефон"
+      email: "Email"
+      language: "Тіл"
+      also: "сонымен қатар:"
+      map: "Карта"
+      view_on_maps: "Google Maps-те ашу"
+      vacancies: "Бос орындар"
+      careers_page: "Вакансиялар беті"
+      technologies: "Технологиялар"
+      source: "Дереккөз"
+      last_checked: "Соңғы тексеру"
+      never: "ешқашан"
+      noindex_badge: "noindex"
+      noindex_title: "noindex деп белгіленген — бұл толтырылмаған/дайындалып жатқан бет болуы мүмкін"
+      parked_badge: "паркинг?"
+      parked_title: "Жергілікті AI бұл домен паркингте тұрған болуы мүмкін деп белгіледі"
+  # Language names as shown *in Kazakh*, regardless of which language
+  # they name (see app/helpers/application_helper.rb#language_display_name).
+  languages:
+    ru: "Орыс тілі"
+    kk: "Қазақ тілі"
+    en: "Ағылшын тілі"
+    tr: "Түрік тілі"
+    az: "Әзербайжан тілі"
+    uz: "Өзбек тілі"
+    uk: "Украин тілі"
+    de: "Неміс тілі"
+    fr: "Француз тілі"
+    es: "Испан тілі"
+    it: "Итальян тілі"
+    pt: "Португал тілі"
+    zh: "Қытай тілі"
+    ja: "Жапон тілі"
+    ko: "Корей тілі"
+    ar: "Араб тілі"
+    he: "Иврит тілі"
+    hi: "Хинди тілі"
+  # Pagy has en/ru locales built in, but not kk.
+  pagy:
+    aria_label:
+      nav:
+        one: "Бет"
+        other: "Беттер"
+      previous: "Алдыңғы"
+      next: "Келесі"
+    previous: "&lt;"
+    next: "&gt;"
+    gap: "&hellip;"
+    item_name:
+      one: "жазба"
+      other: "жазба"
+    info_tag:
+      no_count: "%{page} беті, барлығы %{pages}"
+      no_items: "%{item_name} табылмады"
+      single_page: "%{count} %{item_name}"
+      multiple_pages: "Барлығы %{count} %{item_name}, %{from}-%{to} көрсетілуде"
+  stats:
+    title: "Статистика: санаттар бойынша технологиялар"
+    sites_count:
+      one: "%{count} сайт"
+      other: "%{count} сайт"

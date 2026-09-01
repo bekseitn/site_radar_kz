@@ -1,0 +1,25 @@
+<h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6"><%= t("stats.title") %></h1>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <% @category_stats.each do |entry| %>
+    <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+      <h2 class="text-sm font-semibold text-gray-900 mb-3">
+        <%= entry[:category] %>
+        <span class="text-gray-400 font-normal">(<%= t("stats.sites_count", count: entry[:site_count]) %>)</span>
+      </h2>
+
+      <% max = entry[:technologies].map { |(_name, count)| count }.max.to_f %>
+      <div class="flex flex-col gap-1.5">
+        <% entry[:technologies].each do |name, count| %>
+          <div class="flex items-center gap-2 text-xs" title="<%= "#{name}: #{t('stats.sites_count', count: count)}" %>">
+            <span class="w-32 truncate flex-none text-gray-700"><%= name %></span>
+            <div class="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div class="bg-indigo-500 h-full rounded-full" style="width: <%= max.positive? ? (count / max * 100).round(1) : 0 %>%"></div>
+            </div>
+            <span class="w-6 text-right flex-none text-gray-500"><%= count %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

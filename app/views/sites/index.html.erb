@@ -1,0 +1,62 @@
+<h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6"><%= t("layout.heading") %></h1>
+
+<%= form_with url: sites_path, method: :get, data: { turbo_frame: "sites" },
+      class: "mb-6 grid grid-cols-2 gap-4 sm:flex sm:items-end sm:flex-wrap bg-white border border-gray-200 rounded-lg p-4 shadow-sm" do |f| %>
+  <div>
+    <%= f.label :city, t("sites.filters.city"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :city, options_for_select(@cities, params[:city]),
+          { include_blank: t("sites.filters.all_cities") },
+          class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+  </div>
+  <div>
+    <%= f.label :category, t("sites.filters.category"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :category, options_for_select(@categories, params[:category]),
+          { include_blank: t("sites.filters.all_categories") },
+          class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+  </div>
+  <div>
+    <%= f.label :technology, t("sites.filters.technology"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :technology, value: params[:technology], placeholder: t("sites.filters.technology_placeholder"),
+          class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+    <details class="mt-1">
+      <summary class="text-xs text-indigo-600 cursor-pointer select-none"><%= t("sites.filters.pick_from_list") %></summary>
+      <div class="mt-2 max-h-48 w-64 overflow-y-auto rounded-md border border-gray-200 p-2 grid grid-cols-2 gap-x-3 gap-y-1">
+        <% @technologies.each do |name| %>
+          <label class="flex items-center gap-1.5 text-xs">
+            <%= check_box_tag "technologies[]", name, Array(params[:technologies]).include?(name), id: nil,
+                  class: "rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" %>
+            <%= name %>
+          </label>
+        <% end %>
+      </div>
+    </details>
+  </div>
+  <div>
+    <%= f.label :language, t("sites.filters.language"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :language, options_for_select(@languages, params[:language]),
+          { include_blank: t("sites.filters.all_languages") },
+          class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+  </div>
+  <div class="col-span-2 sm:col-auto sm:min-w-64">
+    <%= f.label :q, t("sites.filters.name_or_domain"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.text_field :q, value: params[:q], placeholder: t("sites.filters.name_or_domain_placeholder"),
+          class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+  </div>
+  <div>
+    <%= f.label :vacancy, t("sites.filters.vacancy"), class: "block text-sm font-medium text-gray-700 mb-1" %>
+    <%= f.select :vacancy, options_for_select({ t("sites.filters.all_sites") => "", t("sites.filters.hiring_only") => "hiring" }, params[:vacancy]),
+          {}, class: "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" %>
+  </div>
+  <%= f.submit t("sites.filters.submit"), class: "col-span-2 sm:col-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500" %>
+<% end %>
+
+<div data-controller="modal">
+  <%= turbo_frame_tag "sites" do %>
+    <%= render "sites/list", sites: @sites, pagy: @pagy, sort_search: @sort_search %>
+  <% end %>
+
+  <dialog data-modal-target="dialog" data-action="click->modal#closeOnBackdrop"
+          class="rounded-lg shadow-xl backdrop:bg-gray-900/50 w-full max-w-lg m-auto p-0">
+    <%= turbo_frame_tag "site_modal_frame", data: { modal_target: "frame" } %>
+  </dialog>
+</div>

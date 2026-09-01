@@ -1,0 +1,7 @@
+{"urlkey": "kz,example)/", "timestamp": "20260418000318", "url": "https://example.kz/", "mime": "text/html", "status": "200", "digest": "AAA"}
+{"urlkey": "kz,example)/about", "timestamp": "20260418000320", "url": "https://example.kz/about", "mime": "text/html", "status": "200", "digest": "BBB"}
+{"urlkey": "kz,onlyredirect)/", "timestamp": "20260418000321", "url": "http://onlyredirect.kz/", "mime": "text/html", "status": "301", "digest": "CCC", "redirect": "https://onlyredirect.kz/"}
+{"urlkey": "kz,notfound)/", "timestamp": "20260418000322", "url": "https://notfound.kz/missing", "mime": "text/html", "status": "404", "digest": "DDD"}
+{"urlkey": "kz,asset)/logo.png", "timestamp": "20260418000323", "url": "https://asset-only.kz/logo.png", "mime": "image/png", "status": "200", "digest": "EEE"}
+this is not valid json
+{"urlkey": "kz,newsite)/", "timestamp": "20260418000324", "url": "https://newsite.kz/", "mime": "text/html", "status": "200", "digest": "FFF"}

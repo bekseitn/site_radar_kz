@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="SiteRadar KZ">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= display_meta_tags site: "SiteRadar KZ", reverse: true %>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <main class="container mx-auto mt-28 px-5 flex flex-col gap-4">
+      <nav class="flex flex-wrap items-center justify-between gap-2 -mb-4" aria-label="Main">
+        <div class="flex gap-4 text-sm font-medium">
+          <%= link_to t("layout.nav.sites"), root_path,
+                class: "text-gray-700 hover:text-indigo-600 #{'text-indigo-600' if current_page?(root_path)}" %>
+          <%= link_to t("layout.nav.stats"), stats_path,
+                class: "text-gray-700 hover:text-indigo-600 #{'text-indigo-600' if current_page?(stats_path)}" %>
+        </div>
+        <div class="flex gap-1 text-lg" aria-label="Language">
+          <% I18n.available_locales.each do |locale| %>
+            <%= link_to language_flag(locale), locale_switch_path(locale), title: language_display_name(locale),
+                  class: "px-1.5 py-1 rounded leading-none #{'ring-2 ring-indigo-600' if locale == I18n.locale}" %>
+          <% end %>
+        </div>
+      </nav>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>
