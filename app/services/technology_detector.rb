@@ -187,7 +187,7 @@ class TechnologyDetector
     return if link_analysis[:vacancy_href].present? && try_ai_vacancy_link(site, technologies, link_analysis[:vacancy_href])
 
     VACANCY_PATHS.each do |path|
-      response = fetch(site.url, path: path)
+      response = fetch(site.url, path: path, retries: false)
       next unless response&.status == 200
       next if redirected_to_root?(response)
 
@@ -204,7 +204,7 @@ class TechnologyDetector
     url = resolve_url(site.url, href)
     return false if url.blank?
 
-    response = fetch(url)
+    response = fetch(url, retries: false)
     return false unless response&.status == 200
     return false if redirected_to_root?(response)
 
@@ -434,7 +434,7 @@ class TechnologyDetector
   # to the homepage.
   def probe_locale_paths(site)
     LOCALE_PATHS.filter_map do |path|
-      response = fetch(site.url, path: path)
+      response = fetch(site.url, path: path, retries: false)
       next unless response&.status == 200
       next if redirected_to_root?(response)
 
@@ -450,7 +450,7 @@ class TechnologyDetector
 
     LOCALE_SUBDOMAINS.filter_map do |sub|
       subdomain_host = "#{sub}.#{host}"
-      response = fetch("https://#{subdomain_host}/")
+      response = fetch("https://#{subdomain_host}/", retries: false)
       next unless response&.status == 200
       next unless response.env.url.host == subdomain_host
 
@@ -529,15 +529,20 @@ class TechnologyDetector
     end
   end
 
-  def fetch(url, path: nil)
+  # retries: false skips the retry/backoff — for the many throwaway
+  # probes (vacancy/locale paths, locale subdomains) where a failure
+  # almost always means "doesn't exist", not "worth retrying", and
+  # retrying all of them was the main reason a full run was so slow.
+  def fetch(url, path: nil, retries: true)
     full_url = build_url(url, path)
+    max_attempts = retries ? MAX_ATTEMPTS : 1
     attempts = 0
 
     begin
       attempts += 1
       connection.get(full_url)
     rescue *network_rescue_classes(Faraday::Error) => e
-      if attempts < MAX_ATTEMPTS
+      if attempts < max_attempts
         sleep(RETRY_BACKOFF * attempts) if @delay.positive?
         retry
       end
