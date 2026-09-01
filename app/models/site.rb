@@ -40,6 +40,9 @@ class Site < ApplicationRecord
     raw
   end
 
+  # Sites detected with the local-AI fallbacks on (see TechnologyDetector).
+  scope :ai_checked, -> { where(ai_checked: true) }
+
   scope :search_name_or_url, ->(term) {
     pattern = "%#{sanitize_sql_like(term)}%"
     where("sites.name LIKE ? OR sites.url LIKE ?", pattern, pattern)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_181831) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_01_143026) do
   create_table "categories", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -75,6 +75,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_181831) do
   end
 
   create_table "sites", force: :cascade do |t|
+    t.boolean "ai_checked", default: false, null: false
     t.string "country"
     t.datetime "created_at", null: false
     t.text "description"

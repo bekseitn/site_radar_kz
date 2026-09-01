@@ -156,7 +156,7 @@ class TechnologyDetector
     update_site_metadata(site, doc, response, link_analysis)
     check_vacancy_page(site, technologies, link_analysis)
 
-    site.update!(status: :checked, last_checked_at: Time.current)
+    site.update!(status: :checked, last_checked_at: Time.current, ai_checked: @ai_enabled)
     stats[:checked] += 1
     stats[:with_technology] += 1 if detected.any?
     stats[:with_vacancy] += 1 if site.vacancy_url.present?
