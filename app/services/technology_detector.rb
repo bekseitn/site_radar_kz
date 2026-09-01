@@ -79,8 +79,9 @@ class TechnologyDetector
 
   def self.call(...) = new(...).call
 
-  # on_progress is called once per processed site, as
-  # on_progress.call(done_count, total_count).
+  # on_progress is called twice per site: once as it starts, as
+  # on_progress.call(done_count, total_count, site_url), and again once
+  # it's done, as on_progress.call(done_count, total_count).
   #
   # limit caps how many sites this run processes (nil means all). Every
   # processed site's status moves off "pending", so the next run picks
@@ -120,6 +121,8 @@ class TechnologyDetector
       if @ai_enabled && !Ai::Client.available?
         raise OllamaUnavailableError, "Ollama stopped responding at #{Ai::Client::HOST} after #{stats[:checked]} sites this run — #{site.url} onward are still pending"
       end
+
+      @on_progress.call(index, total, site.url)
 
       begin
         process(site, stats)

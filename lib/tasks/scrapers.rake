@@ -1,11 +1,14 @@
 require "ruby-progressbar"
 
 # Builds an on_progress callback backed by a visible progress bar. Pass
-# just a count if the total isn't known upfront, or pass total once it is.
+# just a count if the total isn't known upfront, or pass total once it
+# is. A 3rd label arg (e.g. the site currently being processed) shows
+# up next to the title.
 def progress_bar(title)
   bar = ProgressBar.create(title: title, total: nil, format: "%t: |%B| %c/%C %p%% ETA: %e")
-  ->(done, total = nil) do
+  ->(done, total = nil, label = nil) do
     bar.total = total if total
+    bar.title = label ? "#{title} #{label}" : title
     bar.progress = done
   end
 end
