@@ -152,7 +152,7 @@ class TechnologyDetector
       return
     end
 
-    doc = Nokogiri::HTML(response.body.to_s.scrub)
+    doc = Nokogiri::HTML(utf8_body(response.body))
 
     detected = Wappalyzer::Analyzer.call(response)
     technologies = save_technologies(site, detected)
@@ -241,7 +241,7 @@ class TechnologyDetector
   end
 
   def mentioned_technologies(response, technologies)
-    body = response.body.to_s.scrub
+    body = utf8_body(response.body)
     technologies.select { |technology| body.match?(/\b#{Regexp.escape(technology.name)}\b/i) }
   end
 
@@ -521,6 +521,22 @@ class TechnologyDetector
   def network_rescue_classes(base)
     [ base, defined?(WebMock::NetConnectNotAllowedError) && WebMock::NetConnectNotAllowedError,
       defined?(VCR::Errors::UnhandledHTTPRequestError) && VCR::Errors::UnhandledHTTPRequestError ].select { |k| k }
+  end
+
+  # Many older .kz sites still serve Windows-1251 or don't declare a
+  # charset at all — matching a UTF-8 pattern against that raises
+  # Encoding::CompatibilityError, so this forces UTF-8 first.
+  # Undeclared (ASCII-8BIT) is assumed to actually be UTF-8, since
+  # that's the far more common case than truly binary content; a
+  # declared non-UTF-8 charset is transcoded for real.
+  def utf8_body(raw)
+    body = raw.to_s
+
+    case body.encoding
+    when Encoding::UTF_8 then body.scrub
+    when Encoding::ASCII_8BIT then body.dup.force_encoding(Encoding::UTF_8).scrub
+    else body.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "")
+    end
   end
 
   def resolve_url(base, candidate)
