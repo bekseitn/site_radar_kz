@@ -141,7 +141,10 @@ class TechnologyDetector
     response = fetch(site.url)
 
     if response.nil? || response.status >= 500
-      site.update!(status: :unreachable, last_checked_at: Time.current)
+      # ai_checked here too — an AI-enabled run did attempt this site,
+      # it just found nothing to fetch, so there's no point retrying it
+      # for AI enrichment alone (scrapers:enrich_with_ai).
+      site.update!(status: :unreachable, last_checked_at: Time.current, ai_checked: @ai_enabled)
       stats[:unreachable] += 1
       return
     end
