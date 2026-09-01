@@ -6,11 +6,11 @@ require "faraday/follow_redirects"
 # info from JSON-LD (see JsonLdBusinessInfo) and probes common paths to
 # find a vacancy page that mentions an already-detected technology.
 #
-# With ai_enabled: true (off by default — see Ai::Client), a local
-# Ollama model fills in gaps the deterministic extraction couldn't
-# (description, city, categories, parked-domain flag) and helps find
-# the vacancy page and other language versions from the homepage's own
-# links (Ai::LinkAnalyzer).
+# With ai_enabled: true (off by default — see Ai::Client), one local
+# Ollama call per site (Ai::SiteAnalyzer) fills in gaps the
+# deterministic extraction couldn't (description, city, categories,
+# parked-domain flag) and, given the homepage's own links, helps find
+# the vacancy page and other language versions.
 #
 # Single public entry point, per project convention:
 #   TechnologyDetector.call
@@ -153,16 +153,10 @@ class TechnologyDetector
 
     detected = Wappalyzer::Analyzer.call(response)
     technologies = save_technologies(site, detected)
+    enrichment = @ai_enabled ? ai_enrichment(site, doc, technologies) : {}
 
-    # One AI call (off unless ai_enabled), shared by update_site_metadata
-    # and check_vacancy_page below — skipped when neither would use it
-    # (hreflang already answers the language question, and there's no
-    # technology for check_vacancy_page to look for anyway).
-    need_link_analysis = @ai_enabled && (extract_available_languages(doc).blank? || technologies.present?)
-    link_analysis = need_link_analysis ? analyze_links(doc) : {}
-
-    update_site_metadata(site, doc, response, link_analysis)
-    check_vacancy_page(site, technologies, link_analysis)
+    update_site_metadata(site, doc, response, enrichment)
+    check_vacancy_page(site, technologies, enrichment)
 
     site.update!(status: :checked, last_checked_at: Time.current, ai_checked: @ai_enabled)
     stats[:checked] += 1
@@ -170,15 +164,30 @@ class TechnologyDetector
     stats[:with_vacancy] += 1 if site.vacancy_url.present?
   end
 
-  def analyze_links(doc)
-    links = doc.css("a[href]").filter_map do |node|
+  # One AI call per site: description/categories/cities/likely_parked
+  # always, plus vacancy_href/language links from the homepage's own
+  # links — but only bothers extracting+sending those when something
+  # would use them (hreflang already answers the language question, or
+  # there's no technology for check_vacancy_page to look for anyway).
+  def ai_enrichment(site, doc, technologies)
+    need_links = extract_available_languages(doc).blank? || technologies.present?
+
+    Ai::SiteAnalyzer.call(
+      text: visible_text(doc),
+      links: need_links ? extract_links(doc) : nil,
+      need_description: site.description.blank?,
+      need_categories: true,
+      need_cities: site.cities.empty?
+    )
+  end
+
+  def extract_links(doc)
+    doc.css("a[href]").filter_map do |node|
       href = node["href"].to_s.strip
       next if href.blank? || href.start_with?("#", "javascript:", "mailto:", "tel:")
 
       { text: node.text.to_s.strip.first(80), href: href }
     end.uniq { |link| link[:href] }
-
-    Ai::LinkAnalyzer.call(links: links)
   end
 
   # Tries the AI-found vacancy link first (off unless ai_enabled), then
@@ -186,10 +195,10 @@ class TechnologyDetector
   # page only counts if it mentions a technology already detected on the
   # homepage, which also flags found_in_vacancy on the matching
   # site_technologies.
-  def check_vacancy_page(site, technologies, link_analysis)
+  def check_vacancy_page(site, technologies, enrichment)
     return if technologies.empty?
 
-    return if link_analysis[:vacancy_href].present? && try_ai_vacancy_link(site, technologies, link_analysis[:vacancy_href])
+    return if enrichment[:vacancy_href].present? && try_ai_vacancy_link(site, technologies, enrichment[:vacancy_href])
 
     VACANCY_PATHS.each do |path|
       response = fetch(site.url, path: path, retries: false)
@@ -240,7 +249,7 @@ class TechnologyDetector
   # Importers only ever have a bare hostname, so fill in everything else
   # findable on the homepage: name, description, preview image, favicon,
   # language, and other language versions of the site.
-  def update_site_metadata(site, doc, response, link_analysis)
+  def update_site_metadata(site, doc, response, enrichment)
     name = meta_content(doc, "og:title", property: true).presence || extract_title(doc)
     site.name = clean_text(name, NAME_MAX_LENGTH) if name.present?
 
@@ -257,7 +266,7 @@ class TechnologyDetector
     site.favicon_url = favicon_url if favicon_url.present?
 
     language = doc.at_css("html")&.attr("lang").presence || detect_language(doc)
-    available_languages = extract_available_languages(doc) || link_analysis[:language_codes] ||
+    available_languages = extract_available_languages(doc) || enrichment[:language_codes] ||
       probe_locale_paths(site) || probe_locale_subdomains(site)
     assign_languages(site, language, available_languages)
 
@@ -299,18 +308,13 @@ class TechnologyDetector
     opening_hours = json_ld[:opening_hours]
     site.opening_hours = clean_text(opening_hours, OPENING_HOURS_MAX_LENGTH) if opening_hours.present?
 
-    apply_ai_enrichment(site, doc) if @ai_enabled
+    apply_ai_enrichment(site, enrichment) if @ai_enabled
   end
 
-  # Runs after everything else — fills in description/cities only if
-  # still missing, but categories and likely_parked always.
-  def apply_ai_enrichment(site, doc)
-    enrichment = Ai::SiteAnalyzer.call(
-      text: visible_text(doc),
-      need_description: site.description.blank?,
-      need_categories: true,
-      need_cities: site.cities.empty?
-    )
+  # Applies the description/categories/cities/likely_parked part of the
+  # AI enrichment computed in ai_enrichment above — description/cities
+  # only if still missing, categories and likely_parked always.
+  def apply_ai_enrichment(site, enrichment)
     return if enrichment.blank?
 
     if site.description.blank? && enrichment[:description].present?

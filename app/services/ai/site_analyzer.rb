@@ -1,6 +1,9 @@
 module Ai
   # Fills in whatever TechnologyDetector's deterministic extraction
-  # couldn't: description, categories, cities, and likely_parked.
+  # couldn't: description, categories, cities, likely_parked, and,
+  # given the homepage's links, a vacancy page link and any language
+  # switcher links — all in one call, since it's the same page and one
+  # call is half the AI time of two.
   # Best-effort — returns {} if Ollama isn't reachable or there's
   # nothing to work with.
   #
@@ -8,22 +11,29 @@ module Ai
   #   Ai::SiteAnalyzer.call(text: visible_text, need_description: true, need_categories: true)
   class SiteAnalyzer
     SYSTEM_PROMPT = <<~PROMPT.freeze
-      You analyze the homepage text of a website and answer only with
-      the requested JSON fields. Be concise and factual — never invent
-      information the text doesn't support. If the text is too sparse
-      or garbled to tell, answer with an empty string/array rather than
-      guessing (except likely_parked, which should be your best
-      judgment either way).
+      You analyze a website's homepage (text and/or links) and answer
+      only with the requested JSON fields. Be concise and factual —
+      never invent information the text/links don't support. If
+      something is too sparse or unclear to tell, answer with an empty
+      string/array rather than guessing (except likely_parked, which
+      should be your best judgment either way).
     PROMPT
 
     TEXT_SAMPLE_LENGTH = 4000
     MAX_CATEGORIES = 3
     MAX_CITIES = 3
+    MAX_LINKS = 80
+
+    # "kz" for "Kazakh" is a common mix-up with the country code (the
+    # language code is "kk") — the prompt says so explicitly, but this
+    # catches it in code too rather than trusting that alone.
+    LANGUAGE_CODE_FIXUPS = { "kz" => "kk" }.freeze
 
     def self.call(...) = new(...).call
 
-    def initialize(text:, need_description: true, need_categories: true, need_parked: true, need_cities: false)
+    def initialize(text:, links: nil, need_description: true, need_categories: true, need_parked: true, need_cities: false)
       @text = text.to_s.first(TEXT_SAMPLE_LENGTH)
+      @links = links.presence&.first(MAX_LINKS)
       @need_description = need_description
       @need_categories = need_categories
       @need_parked = need_parked
@@ -31,7 +41,7 @@ module Ai
     end
 
     def call
-      return {} if @text.blank? || required_keys.empty?
+      return {} if (@text.blank? && !need_links?) || required_keys.empty?
 
       result = Ai::Client.call(system: SYSTEM_PROMPT, prompt: prompt, schema: schema)
       return {} if result.blank?
@@ -40,21 +50,36 @@ module Ai
         description: (result[:description].presence if @need_description),
         categories: normalized_categories(result[:categories]),
         likely_parked: (result[:likely_parked] if @need_parked),
-        cities: normalized_cities(result[:cities])
+        cities: normalized_cities(result[:cities]),
+        vacancy_href: (trusted_href(result[:vacancy_href]) if need_links?),
+        language_codes: (language_codes(result[:language_links]) if need_links?)
       }.compact
     end
 
     private
+
+    def need_links? = @links.present?
 
     def prompt
       instructions = [
         (@need_description ? "- description: a one-sentence, neutral summary of what this business/site offers, written in the same language as the page text." : nil),
         (@need_categories ? "- categories: #{categories_instruction}" : nil),
         (@need_parked ? "- likely_parked: true if this looks like a parked domain, registrar placeholder, \"coming soon\"/\"under construction\" page, or otherwise not a real in-use site; false otherwise." : nil),
-        (@need_cities ? "- cities: an array of up to #{MAX_CITIES} Kazakhstani cities this business/site is based in or serves, in Russian (e.g. \"Алматы\", \"Астана\"), if the text says or clearly implies any; empty array otherwise." : nil)
+        (@need_cities ? "- cities: an array of up to #{MAX_CITIES} Kazakhstani cities this business/site is based in or serves, in Russian (e.g. \"Алматы\", \"Астана\"), if the text says or clearly implies any; empty array otherwise." : nil),
+        (need_links? ? "- vacancy_href: which single link below, if any, most likely leads to a careers/jobs/vacancies page" : nil),
+        (need_links? ? "- language_links: which links below, if any, are a language switcher pointing at other language/locale versions of this same site (not links to unrelated pages) — for each, give its href and its ISO 639-1 language code" : nil)
       ].compact
 
-      "Answer with these fields:\n#{instructions.join("\n")}\n\nHomepage text:\n#{@text}"
+      [
+        "Answer with these fields:",
+        instructions.join("\n"),
+        (@text.present? ? "\nHomepage text:\n#{@text}" : nil),
+        (need_links? ? "\nLinks found on the homepage (pick vacancy_href/language_links only from these, never invent one):\n#{links_text}" : nil)
+      ].compact.join("\n")
+    end
+
+    def links_text
+      @links.map { |link| "- text: #{link[:text].presence || '(no text)'}, href: #{link[:href]}" }.join("\n")
     end
 
     def categories_instruction
@@ -75,7 +100,16 @@ module Ai
           maxItems: MAX_CATEGORIES
         },
         likely_parked: { type: "boolean" },
-        cities: { type: "array", items: { type: "string" }, maxItems: MAX_CITIES }
+        cities: { type: "array", items: { type: "string" }, maxItems: MAX_CITIES },
+        vacancy_href: { type: "string" },
+        language_links: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { language: { type: "string" }, href: { type: "string" } },
+            required: %w[language href]
+          }
+        }
       }.slice(*required_keys)
 
       { type: "object", properties: properties, required: required_keys.map(&:to_s) }
@@ -86,7 +120,9 @@ module Ai
         (:description if @need_description),
         (:categories if @need_categories),
         (:likely_parked if @need_parked),
-        (:cities if @need_cities)
+        (:cities if @need_cities),
+        (:vacancy_href if need_links?),
+        (:language_links if need_links?)
       ].compact
     end
 
@@ -104,6 +140,25 @@ module Ai
       return nil unless @need_cities
 
       Array(values).map { |value| value.to_s.strip }.reject(&:blank?).uniq.presence
+    end
+
+    # Only trusts an href the model was actually shown — guards against
+    # it inventing a plausible-looking path that was never on the page.
+    def trusted_href(href)
+      return nil if href.blank? || !need_links?
+
+      @links.map { |link| link[:href] }.find { |candidate| candidate == href }
+    end
+
+    def language_codes(language_links)
+      return nil unless need_links?
+
+      Array(language_links).filter_map do |entry|
+        next unless trusted_href(entry[:href])
+
+        code = entry[:language].to_s.strip.downcase.presence
+        code && LANGUAGE_CODE_FIXUPS.fetch(code, code)
+      end.uniq.presence
     end
 
     def taxonomy
