@@ -150,12 +150,17 @@ class TechnologyDetector
     end
 
     doc = Nokogiri::HTML(response.body.to_s.scrub)
-    # One AI call (off unless ai_enabled), shared by update_site_metadata
-    # and check_vacancy_page below.
-    link_analysis = @ai_enabled ? analyze_links(doc) : {}
 
     detected = Wappalyzer::Analyzer.call(response)
     technologies = save_technologies(site, detected)
+
+    # One AI call (off unless ai_enabled), shared by update_site_metadata
+    # and check_vacancy_page below — skipped when neither would use it
+    # (hreflang already answers the language question, and there's no
+    # technology for check_vacancy_page to look for anyway).
+    need_link_analysis = @ai_enabled && (extract_available_languages(doc).blank? || technologies.present?)
+    link_analysis = need_link_analysis ? analyze_links(doc) : {}
+
     update_site_metadata(site, doc, response, link_analysis)
     check_vacancy_page(site, technologies, link_analysis)
 
