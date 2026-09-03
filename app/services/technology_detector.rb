@@ -24,7 +24,6 @@ class TechnologyDetector
   REDIRECT_LIMIT = 5
   NAME_MAX_LENGTH = 255
   DESCRIPTION_MAX_LENGTH = 500
-  LANGUAGE_MAX_LENGTH = 35 # generous for a BCP 47 tag like "en-US" or "zh-Hans-CN"
   LANGUAGE_DETECTION_SAMPLE_LENGTH = 3000 # plenty for a reliable trigram match, caps the work per page
   LANGUAGE_DETECTION_MIN_CHARS = 30 # below this, statistical detection is unreliable — leave language blank instead
   CITY_MAX_LENGTH = 100
@@ -39,6 +38,23 @@ class TechnologyDetector
   # қаласы") so the same city doesn't fragment into duplicates.
   CITY_PREFIX_PATTERN = /\A(?:г\.?|город|қ\.?)\s+/i
   CITY_SUFFIX_PATTERN = /\s+(?:қаласы|қ\.?)\z/i
+
+  # Maps any code the "whatlanguage" gem knows (either form — ISO 639-3
+  # like "rus"/"kaz", or its own 639-1-where-available shorthand like
+  # "ru"/"kk") to that shorthand. Used to validate a declared/AI-guessed
+  # language code is a real language before it's ever saved — hreflang
+  # and especially the AI link analysis sometimes hand back a country
+  # code, a raw href, or (with AI) a stray bit of page text instead.
+  CANONICAL_LANGUAGE_CODE = begin
+    WhatLanguage.const_get(:CODE_INFO).each_with_object({}) do |(code, (_name, iso)), map|
+      map[code] = iso.to_s
+      map[iso.to_s] = iso.to_s
+    end.freeze
+  rescue NameError
+    # WhatLanguage renamed/removed its internal table — fall back to
+    # just the languages this app already knows how to display.
+    %w[ru kk en tr az uz uk de fr es it pt zh ja ko ar he hi].index_with(&:itself).freeze
+  end
 
   # Too generic to prefer over a more specific type on the same page —
   # used as a fallback only if that's all a page declared.
@@ -271,7 +287,7 @@ class TechnologyDetector
     favicon_url = resolve_image_url(site.url, favicon)
     site.favicon_url = favicon_url if favicon_url.present?
 
-    language = doc.at_css("html")&.attr("lang").presence || detect_language(doc)
+    language = normalized_language_code(doc.at_css("html")&.attr("lang")) || detect_language(doc)
     available_languages = extract_available_languages(doc) || enrichment[:language_codes] ||
       probe_locale_paths(site) || probe_locale_subdomains(site)
     assign_languages(site, language, available_languages)
@@ -360,15 +376,28 @@ class TechnologyDetector
 
   # site.site_languages= (not site.languages=, which can't carry
   # is_primary). Full replace each run, same as categories/technologies.
+  # Anything that isn't a real language code (see normalized_language_code)
+  # is silently dropped rather than saved as-is.
   def assign_languages(site, primary_code, extra_codes)
-    primary_name = clean_text(primary_code, LANGUAGE_MAX_LENGTH)
-    extra_names = Array(extra_codes).filter_map { |code| clean_text(code, LANGUAGE_MAX_LENGTH) }.uniq
+    primary_name = normalized_language_code(primary_code)
+    extra_names = Array(extra_codes).filter_map { |code| normalized_language_code(code) }.uniq
     all_names = ([ primary_name ] + extra_names).compact.uniq
     return if all_names.empty?
 
     site.site_languages = all_names.map do |name|
       SiteLanguage.new(language: Language.find_or_create_by!(name: name), is_primary: name == primary_name)
     end
+  end
+
+  # A bare code (region tag stripped) mapped to its canonical short
+  # form, or nil if CANONICAL_LANGUAGE_CODE doesn't recognize it as a
+  # real language at all.
+  def normalized_language_code(code)
+    bare = code.to_s.strip.downcase.split(/[-_]/).first
+    return nil if bare.blank?
+
+    bare = "kk" if bare == "kz" # Kazakhstan's country code, not Kazakh's language code
+    CANONICAL_LANGUAGE_CODE[bare]
   end
 
   # site.cities= — a full replace, same reasoning as assign_languages.
